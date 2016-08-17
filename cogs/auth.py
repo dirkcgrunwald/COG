@@ -19,6 +19,7 @@ import flask
 import backend_redis as backend
 
 import authmod_moodle
+import authmod_ldap
 import authmod_test
 
 logger = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ logger.addHandler(logging.NullHandler())
 _USER_SCHEMA = ['username', 'first', 'last', 'auth', 'token', 'email']
 _GROUP_SCHEMA = ['name']
 
-DEFAULT_AUTHMOD = 'moodle'
+DEFAULT_AUTHMOD = 'ldap'
 
 SPECIAL_GROUP_ADMIN = '99999999-9999-9999-9999-999999999999'
 SPECIAL_GROUP_ANY = '00000000-0000-0000-0000-000000000000'
@@ -197,6 +198,19 @@ class Auth(object):
                 return user_data
             else:
                 return False
+        elif auth_mod == 'ldap':
+            authenticator = authmod_ldap.Authenticator()
+            ldap_user = authenticator.auth_user(username, password)
+            if ldap_user:
+                user_data = {}
+                user_data['username'] = str(ldap_user['uid'])
+                user_data['first'] = str(ldap_user['cn'])
+                user_data['last'] = str(ldap_user['cn'])
+                user_data['email'] = str(ldap_user['email'])
+                return user_data
+            else:
+                return False
+
         elif auth_mod == 'test':
             authenticator = authmod_test.Authenticator()
             test_user = authenticator.auth_user(username, password)
@@ -215,6 +229,8 @@ class Auth(object):
     def get_extra_user_schema(self, auth_mod):
         if auth_mod == 'moodle':
             return authmod_moodle.EXTRA_USER_SCHEMA
+        elif auth_mod == 'ldap':
+            return authmod_ldap.EXTRA_USER_SCHEMA
         elif auth_mod == 'test':
             return authmod_test.EXTRA_USER_SCHEMA
         else:
